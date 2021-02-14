@@ -3,5 +3,5 @@ This is a multithreaded implementation of the "cp" terminal command for UNIX sys
 Done as a high school project.
 
 ## How to use:
-1. Compile with -pthread or -lpthread
-2. Use as ./[executable name specified] [directory or file to copy from] [path to copy to]
+1. Run make or make install (to make multithreaded-cp globally available)
+2. Use as following: [./mcp|mcp] [directory or file to copy from] [destination path]
