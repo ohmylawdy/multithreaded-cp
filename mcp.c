@@ -5,7 +5,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 #define THREADCOUNT 6
 #define COPYBUFFER 5120
@@ -108,8 +107,17 @@ int main(int argc, char* argv[])
          copy_once(from, dest);
       }
    }
+
    free(from);
    free(dest);
+
+   pthread_barrier_destroy(&crawl_output);
+   pthread_barrier_destroy(&thread_sync);
+   pthread_mutex_destroy(&main_mtx);
+   pthread_mutex_destroy(&queue_mtx);
+   pthread_mutex_destroy(&cp_mtx);
+   pthread_cond_destroy(&cp_resume);
+   pthread_cond_destroy(&queue_resume);
 
    return 0;
 }
@@ -211,7 +219,6 @@ void task_get(struct task_queue* queue, struct task** p)
 {
    pthread_mutex_lock(&queue_mtx);
    if (queue->head != NULL && queue->head != NULL) {
-      mmalloc(p, sizeof(struct task));
       (*p)->from = strdup(queue->head->from);
       (*p)->dest = strdup(queue->head->dest);
    }
@@ -320,6 +327,7 @@ void* crawl_thr(void* args)
 void* cp_thr()
 {
    struct task* temp;
+   mmalloc(&temp, sizeof(struct task));
    pthread_barrier_wait(&thread_sync);
    while (1) {
       pthread_mutex_lock(&cp_mtx);
@@ -335,19 +343,16 @@ void* cp_thr()
       ++working_thr;
       pthread_mutex_unlock(&cp_mtx);
 
-      if (temp != NULL) {
-         copy_file(temp->from, temp->dest);
-         free(temp->dest);
-         free(temp->from);
-         free(temp);
-      }
+      copy_file(temp->from, temp->dest);
+      free(temp->dest);
+      free(temp->from);
 
       pthread_mutex_lock(&cp_mtx);
       --working_thr;
       pthread_cond_signal(&queue_resume);
       pthread_mutex_unlock(&cp_mtx);
    }
+   free(temp);
    return (void*)0;
 }
 // ==============================
-
